@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="container mx-auto px-4 py-24">
+  <div class="grid md:grid-cols-2 gap-10 items-center">
+    <div>
+      <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-slate-100">Build together in a cozy corner of the web</h1>
+      <p class="mt-4 text-slate-300 max-w-prose">Cottage-Dev.net is a lightweight forum and real-time chat—with server-rendered pages, modern UX, and no SPA bloat. Join discussions or hop into chat in a flash.</p>
+      <div class="mt-8 flex gap-3">
+        <a href="/forum" class="px-5 py-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">Join Forum</a>
+        <a href="/chat" class="px-5 py-3 rounded-md border border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700">Enter Chat</a>
+      </div>
+      <div class="mt-6 flex items-center gap-4 text-sm text-slate-400">
+        <div class="flex items-center gap-1"><i data-lucide="zap"></i><span>Fast</span></div>
+        <div class="flex items-center gap-1"><i data-lucide="message-square"></i><span>Real-time</span></div>
+        <div class="flex items-center gap-1"><i data-lucide="shield"></i><span>Secure</span></div>
+      </div>
+    </div>
+    <div class="bg-slate-800 rounded-xl border border-slate-700 shadow p-6">
+      <div class="flex items-center gap-2 text-slate-300 mb-4"><i data-lucide="user"></i><span>About Me</span></div>
+      <div class="flex items-center gap-4">
+        <img class="w-16 h-16 rounded-full ring-2 ring-indigo-700" src="https://avatars.githubusercontent.com/u/1?v=4" alt="Avatar" />
+        <div>
+          <p class="font-semibold">Your Name</p>
+          <p class="text-slate-400 text-sm">Short bio goes here with links and interests.</p>
+          <div class="mt-2 flex gap-3 text-sm">
+            <a class="text-indigo-400 hover:underline" href="#">GitHub</a>
+            <a class="text-indigo-400 hover:underline" href="#">Website</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

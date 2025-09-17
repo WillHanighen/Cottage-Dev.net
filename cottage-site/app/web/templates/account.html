@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="container mx-auto px-4 py-12 max-w-3xl">
+  <h1 class="text-3xl font-bold">Account settings</h1>
+  <p class="mt-2 text-slate-300">Manage your profile and password.</p>
+
+  {% if user %}
+  <div class="mt-6 grid gap-8 md:grid-cols-2">
+    <!-- Avatar -->
+    <div class="rounded-lg border border-slate-700 bg-slate-800 p-5">
+      <h2 class="text-lg font-semibold">Profile picture</h2>
+      <p class="text-sm text-slate-400">Upload an image; we’ll crop it square and resize to 512×512.</p>
+
+      {% if avatar_success %}
+      <div class="mt-3 rounded-md border border-emerald-700 bg-emerald-900/40 text-emerald-200 px-3 py-2 text-sm">{{ avatar_success }}</div>
+      {% endif %}
+      {% if avatar_error %}
+      <div class="mt-3 rounded-md border border-rose-700 bg-rose-900/40 text-rose-200 px-3 py-2 text-sm">{{ avatar_error }}</div>
+      {% endif %}
+
+      <div class="mt-4 flex items-center gap-4">
+        {% if avatar_url %}
+        <img class="w-20 h-20 rounded-full ring-2 ring-indigo-700" src="{{ avatar_url }}" alt="Avatar" />
+        {% else %}
+        <div class="w-20 h-20 rounded-full bg-indigo-900 text-indigo-200 flex items-center justify-center text-xl font-semibold">
+          {{ (((user.name or user.email)|default(''))|first)|upper or '?' }}
+        </div>
+        {% endif %}
+        <form method="post" action="/account/avatar" enctype="multipart/form-data" class="flex-1 space-y-2">
+          <input id="avatar" name="avatar" type="file" accept="image/*" class="block w-full text-sm text-slate-300 file:mr-4 file:rounded-md file:border-0 file:bg-slate-700 file:px-3 file:py-2 file:text-slate-100 hover:file:bg-slate-600" required>
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-slate-400">PNG/JPG/WebP, up to 5MB. Cropped square to 512×512.</p>
+            <button type="submit" class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-1.5 text-white hover:bg-indigo-700 text-sm">Upload</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Profile -->
+    <div class="rounded-lg border border-slate-700 bg-slate-800 p-5">
+      <h2 class="text-lg font-semibold">Profile</h2>
+      <p class="text-sm text-slate-400">Update your display name and email.</p>
+
+      {% if profile_success %}
+      <div class="mt-3 rounded-md border border-emerald-700 bg-emerald-900/40 text-emerald-200 px-3 py-2 text-sm">{{ profile_success }}</div>
+      {% endif %}
+      {% if profile_error %}
+      <div class="mt-3 rounded-md border border-rose-700 bg-rose-900/40 text-rose-200 px-3 py-2 text-sm">{{ profile_error }}</div>
+      {% endif %}
+
+      <form class="mt-4 space-y-4" method="post" action="/account/profile">
+        <div>
+          <label class="block text-sm text-slate-300" for="name">Display name</label>
+          <input id="name" name="name" type="text" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" placeholder="Your name" value="{{ user.name or '' }}">
+        </div>
+        <div>
+          <label class="block text-sm text-slate-300" for="email">Email</label>
+          <input id="email" name="email" type="email" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" placeholder="you@example.com" value="{{ user.email or '' }}" required>
+        </div>
+        <div class="pt-1">
+          <button type="submit" class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">Save changes</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Password -->
+    {% if user.provider|default('local') == 'local' %}
+    <div class="rounded-lg border border-slate-700 bg-slate-800 p-5">
+      <h2 class="text-lg font-semibold">Change password</h2>
+      <p class="text-sm text-slate-400">Set a new password for your account.</p>
+
+      {% if password_success %}
+      <div class="mt-3 rounded-md border border-emerald-700 bg-emerald-900/40 text-emerald-200 px-3 py-2 text-sm">{{ password_success }}</div>
+      {% endif %}
+      {% if password_error %}
+      <div class="mt-3 rounded-md border border-rose-700 bg-rose-900/40 text-rose-200 px-3 py-2 text-sm">{{ password_error }}</div>
+      {% endif %}
+
+      <form class="mt-4 space-y-4" method="post" action="/account/password">
+        {% if user.password_hash %}
+        <div>
+          <label class="block text-sm text-slate-300" for="current_password">Current password</label>
+          <input id="current_password" name="current_password" type="password" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" autocomplete="current-password">
+        </div>
+        {% endif %}
+        <div>
+          <label class="block text-sm text-slate-300" for="new_password">New password</label>
+          <input id="new_password" name="new_password" type="password" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" autocomplete="new-password" required>
+        </div>
+        <div>
+          <label class="block text-sm text-slate-300" for="confirm_password">Confirm new password</label>
+          <input id="confirm_password" name="confirm_password" type="password" class="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" autocomplete="new-password" required>
+        </div>
+        <div class="pt-1">
+          <button type="submit" class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">Update password</button>
+        </div>
+      </form>
+    </div>
+    {% else %}
+    <div class="rounded-lg border border-slate-700 bg-slate-800 p-5">
+      <h2 class="text-lg font-semibold">Password</h2>
+      <p class="text-sm text-slate-400">This account uses {{ user.provider|capitalize }} sign-in. Password changes are managed by your provider.</p>
+      <div class="mt-4 text-sm">
+        {% if user.provider == 'github' %}
+        <a class="text-indigo-400 hover:underline" href="https://github.com/settings/security" target="_blank" rel="noopener">Open GitHub security settings</a>
+        {% elif user.provider == 'google' %}
+        <a class="text-indigo-400 hover:underline" href="https://myaccount.google.com/security" target="_blank" rel="noopener">Open Google Account security</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="mt-6 rounded-lg border border-slate-700 bg-slate-800 p-4 text-slate-300">You need to <a href="/login" class="text-indigo-400 hover:underline">sign in</a> to manage your account.</div>
+  {% endif %}
+</section>
+{% endblock %}

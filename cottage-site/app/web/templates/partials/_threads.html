@@ -1,0 +1,15 @@
+{% if threads and threads|length > 0 %}
+  <div class="space-y-2">
+    {% for t in threads %}
+      <a href="/forum/thread/{{ t.id }}" class="block p-4 bg-slate-800 border border-slate-700 rounded-md hover:bg-slate-700">
+        <div class="flex items-center justify-between">
+          <h3 class="font-medium">{{ t.title }}</h3>
+          <span class="text-xs text-slate-400">{{ t.replies_count }} replies</span>
+        </div>
+        <p class="text-sm text-slate-300">{{ t.excerpt }}</p>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="p-4 bg-slate-800 border border-slate-700 rounded-md text-slate-400">No threads yet. Be the first to post.</div>
+{% endif %}

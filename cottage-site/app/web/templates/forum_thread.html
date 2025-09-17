@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="container mx-auto px-4 py-8 max-w-4xl">
+  <div class="mb-6 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold">{{ thread.title }}</h1>
+      {% if category %}
+      <div class="mt-1 text-xs text-slate-400">Category: <a class="text-indigo-400 hover:text-indigo-300" href="/forum?cat={{ category.slug }}">{{ category.name }}</a></div>
+      {% endif %}
+    </div>
+    <div class="flex items-center gap-2">
+      {% if request.state.user and request.state.user.id == thread.user_id %}
+      <a href="/forum/thread/{{ thread.id }}/edit" class="px-3 py-1.5 rounded-md border border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700">Edit</a>
+      {% endif %}
+      <a href="/forum" class="px-3 py-1.5 rounded-md border border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700">Back to forum</a>
+    </div>
+  </div>
+
+  <article class="p-5 rounded-md bg-slate-800 border border-slate-700">
+    <div class="prose prose-invert max-w-none">
+      {{ thread_html | safe }}
+    </div>
+    <div class="mt-4 flex items-center justify-between text-sm">
+      <div class="flex items-center gap-2">
+        <form method="post" action="/forum/thread/{{ thread.id }}/vote">
+          <input type="hidden" name="action" value="up" />
+          <button class="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600" title="Upvote">▲</button>
+        </form>
+        <span class="text-slate-300">{{ thread_score }}</span>
+        <form method="post" action="/forum/thread/{{ thread.id }}/vote">
+          <input type="hidden" name="action" value="down" />
+          <button class="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600" title="Downvote">▼</button>
+        </form>
+      </div>
+      <div class="flex items-center gap-1">
+        {% set reactions = thread_reactions %}
+        <form method="post" action="/forum/thread/{{ thread.id }}/react" class="inline">
+          <input type="hidden" name="key" value="👍" />
+          <button class="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600">👍 {{ reactions.get('👍', 0) }}</button>
+        </form>
+        <form method="post" action="/forum/thread/{{ thread.id }}/react" class="inline">
+          <input type="hidden" name="key" value="🎉" />
+          <button class="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600">🎉 {{ reactions.get('🎉', 0) }}</button>
+        </form>
+        <form method="post" action="/forum/thread/{{ thread.id }}/react" class="inline">
+          <input type="hidden" name="key" value="❤️" />
+          <button class="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600">❤️ {{ reactions.get('❤️', 0) }}</button>
+        </form>
+        <form method="post" action="/forum/thread/{{ thread.id }}/react" class="inline">
+          <input type="hidden" name="key" value="😄" />
+          <button class="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600">😄 {{ reactions.get('😄', 0) }}</button>
+        </form>
+      </div>
+    </div>
+    <div class="mt-2 text-xs text-slate-400">Posted {{ thread.created_at }}</div>
+  </article>
+
+  <div class="mt-8">
+    <h2 class="text-lg font-medium mb-3">Replies</h2>
+    {% if replies and replies|length > 0 %}
+      <div class="space-y-3">
+        {% for r in replies %}
+          <div id="reply-{{ r.id }}" class="p-4 rounded-md bg-slate-800 border border-slate-700">
+            <div class="flex items-center justify-between mb-2 text-sm">
+              <div class="flex items-center gap-2">
+                <form method="post" action="/forum/reply/{{ r.id }}/vote">
+                  <input type="hidden" name="action" value="up" />
+                  <button class="px-2 py-0.5 rounded-md bg-slate-700 hover:bg-slate-600">▲</button>
+                </form>
+                <span class="text-slate-300">{{ r.score }}</span>
+                <form method="post" action="/forum/reply/{{ r.id }}/vote">
+                  <input type="hidden" name="action" value="down" />
+                  <button class="px-2 py-0.5 rounded-md bg-slate-700 hover:bg-slate-600">▼</button>
+                </form>
+              </div>
+              <div class="flex items-center gap-1">
+                {% set rr = r.reactions or {} %}
+                <form method="post" action="/forum/reply/{{ r.id }}/react" class="inline">
+                  <input type="hidden" name="key" value="👍" />
+                  <button class="px-2 py-0.5 rounded-md bg-slate-700 hover:bg-slate-600">👍 {{ rr.get('👍', 0) }}</button>
+                </form>
+                <form method="post" action="/forum/reply/{{ r.id }}/react" class="inline">
+                  <input type="hidden" name="key" value="🎉" />
+                  <button class="px-2 py-0.5 rounded-md bg-slate-700 hover:bg-slate-600">🎉 {{ rr.get('🎉', 0) }}</button>
+                </form>
+                <form method="post" action="/forum/reply/{{ r.id }}/react" class="inline">
+                  <input type="hidden" name="key" value="❤️" />
+                  <button class="px-2 py-0.5 rounded-md bg-slate-700 hover:bg-slate-600">❤️ {{ rr.get('❤️', 0) }}</button>
+                </form>
+                <form method="post" action="/forum/reply/{{ r.id }}/react" class="inline">
+                  <input type="hidden" name="key" value="😄" />
+                  <button class="px-2 py-0.5 rounded-md bg-slate-700 hover:bg-slate-600">😄 {{ rr.get('😄', 0) }}</button>
+                </form>
+                {% if request.state.user and request.state.user.id == r.user_id %}
+                <a href="/forum/reply/{{ r.id }}/edit" class="ml-2 px-2 py-0.5 rounded-md border border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700">Edit</a>
+                {% endif %}
+              </div>
+            </div>
+            <div class="prose prose-invert max-w-none">
+              {{ r.body_html | safe }}
+            </div>
+            <div class="mt-2 text-xs text-slate-400">Posted {{ r.created_at }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="p-4 rounded-md bg-slate-800 border border-slate-700 text-slate-300">No replies yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="mt-8">
+    <h2 class="text-lg font-medium mb-3">Add a reply</h2>
+    {% if error %}
+    <div class="mb-4 p-3 rounded-md bg-rose-900/40 border border-rose-700 text-rose-200 text-sm">{{ error }}</div>
+    {% endif %}
+    {% if request.state.user %}
+      <form method="post" action="/forum/thread/{{ thread.id }}/reply" class="space-y-4">
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Body</label>
+          <textarea name="body" rows="6" required class="w-full px-3 py-2 bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-400 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Write your reply..."></textarea>
+        </div>
+        <div class="flex items-center gap-3">
+          <a href="/forum" class="px-4 py-2 rounded-md border border-slate-700 bg-slate-800 text-slate-100 hover:bg-slate-700">Cancel</a>
+          <button type="submit" class="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">Post Reply</button>
+        </div>
+      </form>
+    {% else %}
+      <a href="/login?next=/forum/thread/{{ thread.id }}" class="px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">Sign in to reply</a>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

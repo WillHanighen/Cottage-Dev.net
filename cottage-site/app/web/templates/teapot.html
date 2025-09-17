@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="min-h-[70vh] flex items-center justify-center">
+  <div class="container mx-auto px-4 py-16 max-w-2xl text-center">
+    <style>
+      @keyframes steam { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    </style>
+    <div class="mx-auto mb-4 text-7xl select-none" style="animation: steam 2s infinite">☕</div>
+    <h1 class="text-4xl font-semibold">418 — I'm a teapot</h1>
+    <p class="mt-3 text-lg text-slate-300">Sorry, I can't brew coffee because I am, permanently, a teapot. <span class="text-slate-400">(RFC 2324)</span></p>
+    <div class="mt-8 flex items-center justify-center gap-3">
+      <a href="/" class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">Go home</a>
+      <a href="javascript:history.back()" class="inline-flex items-center gap-2 rounded-md border border-slate-600 px-4 py-2 text-slate-100 hover:bg-slate-700">Go back</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

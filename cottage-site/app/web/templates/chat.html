@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="container mx-auto px-4 py-8" x-data="chatApp()" x-init="connect()">
+  <h1 class="text-2xl font-semibold mb-1">Chat</h1>
+  {% if request.state.user %}
+  <p class="text-sm text-slate-400 mb-4">Logged in as <span class="font-medium text-slate-300">{{ request.state.user.name or request.state.user.email }}</span></p>
+  {% else %}
+  <p class="text-sm text-slate-400 mb-4">You can read messages. <a class="text-indigo-400 hover:underline" href="/login?next=/chat">Sign in</a> to chat.</p>
+  {% endif %}
+ 
+  <div class="grid grid-rows-[1fr_auto] h-[70vh] bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow">
+    <div id="messages" class="p-4 overflow-y-auto" x-ref="messages">
+      <template x-for="(msg, idx) in messages" x-bind:key="msg.id || (msg.ts ? (msg.ts + '_' + idx) : idx)">
+        <div class="flex items-start gap-1" x-bind:class="[itemMargin(idx), { 'opacity-70': msg.pending, 'animate-pulse': msg.pending }]">
+          <!-- Avatar (hidden for grouped messages) -->
+          <template x-if="!isGrouped(idx)">
+            <template x-if="msg.avatar">
+              <img class="w-8 h-8 rounded-full ring-1 ring-indigo-700" x-bind:src="msg.avatar" alt="Avatar" />
+            </template>
+          </template>
+          <template x-if="!isGrouped(idx) && !msg.avatar">
+            <div class="w-8 h-8 rounded-full bg-indigo-900 text-indigo-200 flex items-center justify-center text-xs font-semibold" x-text="(msg.user && msg.user[0]) || '?'" ></div>
+          </template>
+          
+          <div class="min-w-0">
+            <div class="text-sm leading-tight" x-show="!isGrouped(idx)"><span class="font-medium" x-text="msg.user"></span> <span class="text-slate-400" x-text="formatTime(msg.ts)"></span></div>
+            <div class="text-slate-300 break-words whitespace-pre-wrap leading-tight"> <span x-text="msg.text"></span>
+              <template x-if="msg.pending">
+                <span class="ml-2 text-xs text-slate-400">sending…</span>
+              </template>
+              <template x-if="msg.error">
+                <span class="ml-2 text-xs text-rose-400" x-text="msg.error"></span>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    {% if request.state.user %}
+    <form class="border-t border-slate-700 p-3 flex items-center gap-2" x-on:submit.prevent="send()">
+      <div class="flex-1">
+        <input class="w-full px-3 py-2 bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-400 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+               type="text" placeholder="Type a message..." x-model="draft" x-on:input="clearError()" required>
+        <div class="mt-1 flex items-center justify-between text-xs">
+          <span class="text-slate-400" x-text="`${draft.length}/${maxLen}`" x-bind:class="{ 'text-rose-400': draft.length > maxLen }"></span>
+          <span class="text-rose-400" x-show="err" x-text="err"></span>
+          <button class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed" type="submit" x-bind:disabled="!draft.trim() || draft.length > maxLen || connecting">Send</button>
+        </div>
+      </div>
+    </form>
+    {% else %}
+    <div class="border-t border-slate-700 p-3 text-sm text-slate-400">Sign in to send messages.</div>
+    {% endif %}
+  </div>
+</section>
+ 
+<!-- Chat page config as JSON to avoid inline Jinja inside JS -->
+<script id="chat-config" type="application/json">{{ {
+  'turnstile_site_key': turnstile_site_key,
+  'me_name': me_name,
+  'me_avatar_url': me_avatar_url
+}|tojson }}</script>
+
+<script>
+function chatApp() {
+  return {
+    ws: null,
+    messages: [],
+    draft: '',
+    nextId: 0,
+    maxLen: 2000,
+    err: '',
+    connecting: false,
+    reconnectAttempts: 0,
+    outbox: {}, // client_id -> text
+    config: { key: null, meName: null, meAvatar: null },
+    connect() {
+      // load config
+      try {
+        const el = document.getElementById('chat-config');
+        if (el) {
+          const cfg = JSON.parse(el.textContent || '{}');
+          this.config.key = cfg.turnstile_site_key || null;
+          this.config.meName = cfg.me_name || null;
+          this.config.meAvatar = cfg.me_avatar_url || null;
+        }
+      } catch (_) {}
+      this.openSocket();
+    },
+    openSocket() {
+      if (this.ws) { try { this.ws.close(); } catch (_) {} }
+      this.connecting = true;
+      const proto = (location.protocol === 'https:') ? 'wss' : 'ws';
+      const url = `${proto}://${location.host}/ws/chat`;
+      this.ws = new WebSocket(url);
+      this.ws.onopen = () => {
+        this.connecting = false;
+        this.reconnectAttempts = 0;
+      };
+      this.ws.onmessage = async (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data && data.type === 'history' && Array.isArray(data.items)) {
+            const items = data.items.map(m => this.normalizeMsg(m));
+            this.messages = this.mergeUnique(this.messages, items);
+          } else if (data && data.type === 'error') {
+            this.err = data.error || 'Error';
+            // mark related pending message
+            if (data.client_id) {
+              const idx = this.messages.findIndex(m => m && m.id === data.client_id && m.pending);
+              if (idx !== -1) {
+                this.messages[idx].pending = false;
+                this.messages[idx].error = this.err;
+              }
+              // handle challenge flow: retry with token
+              if (data.code === 'challenge_required') {
+                try {
+                  if (window.turnstile && this.config.key) {
+                    const token = await getTurnstileToken(this.config.key);
+                    const text = this.outbox[data.client_id];
+                    if (token && text) {
+                      const retry = { text, ts: Date.now(), id: data.client_id, cf: token };
+                      this.ws && this.ws.send(JSON.stringify(retry));
+                      // show as pending again
+                      if (idx !== -1) { this.messages[idx].pending = true; this.messages[idx].error = ''; }
+                    }
+                  }
+                } catch (_) {}
+              }
+            }
+          } else if (data && typeof data === 'object') {
+            const msg = this.normalizeMsg(data);
+            if (msg.client_id) {
+              // reconcile optimistic message
+              const idx = this.messages.findIndex(m => m && m.id === msg.client_id);
+              if (idx !== -1) {
+                const existing = this.messages[idx];
+                this.messages[idx] = { ...msg, self: existing.self, pending: false };
+                return;
+              }
+            }
+            if (!this.messages.some(m => m && m.id === msg.id)) {
+              this.messages.push(msg);
+            }
+          }
+          this.$nextTick(() => { this.$refs.messages.scrollTop = this.$refs.messages.scrollHeight; });
+        } catch (_e) {}
+      };
+      this.ws.onclose = () => { this.scheduleReconnect(); };
+      this.ws.onerror = () => { try { this.ws.close(); } catch (_) {}; };
+    },
+    scheduleReconnect() {
+      this.connecting = false;
+      const base = 1000; // 1s
+      const cap = 15000; // 15s
+      const attempt = Math.min(this.reconnectAttempts + 1, 10);
+      this.reconnectAttempts = attempt;
+      const delay = Math.min(cap, base * Math.pow(2, attempt - 1)) + Math.floor(Math.random() * 300);
+      setTimeout(() => { this.openSocket(); }, delay);
+    },
+    clearError() { this.err = ''; },
+    normalizeMsg(m) {
+      const msg = m || {};
+      const hasId = typeof msg.id === 'string' || typeof msg.id === 'number';
+      if (!hasId) { msg.id = `${msg.ts || Date.now()}_${++this.nextId}`; }
+      return msg;
+    },
+    isGrouped(idx) {
+      if (idx <= 0) return false;
+      const prev = this.messages[idx - 1];
+      const cur = this.messages[idx];
+      if (!(prev && cur)) return false;
+      if (prev.user !== cur.user) return false;
+      const dt = Math.abs((cur.ts || 0) - (prev.ts || 0));
+      return dt <= 60 * 1000; // group only within 1 minute
+    },
+    itemMargin(idx) {
+      if (idx === 0) return 'mt-0';
+      // Max compact: 0px for grouped, 1px for non-grouped
+      return this.isGrouped(idx) ? 'mt-0' : 'mt-px';
+    },
+    mergeUnique(existing, incoming) {
+      const seen = new Set(existing.map(m => m && m.id).filter(Boolean));
+      const out = existing.slice();
+      for (const m of incoming) {
+        if (!m) continue;
+        if (!seen.has(m.id)) { out.push(m); seen.add(m.id); }
+      }
+      return out;
+    },
+    async send() {
+      const text = this.draft.trim();
+      if (!text) return;
+      if (text.length > this.maxLen) { this.err = `Message exceeds ${this.maxLen} characters.`; return; }
+      const payload = { text, ts: Date.now() };
+      // Attach a client-generated id (used for optimistic UI and reconciliation)
+      payload.id = `${payload.ts}_self_${++this.nextId}`;
+      // Optimistic add
+      const optimistic = {
+        id: payload.id,
+        user: this.config.meName || 'Me',
+        text,
+        ts: payload.ts,
+        avatar: this.config.meAvatar || null,
+        pending: true,
+        self: true,
+      };
+      this.outbox[payload.id] = text;
+      this.messages.push(optimistic);
+      // Optionally attach a Turnstile token if available
+      try {
+        if (Math.random() < 0.05 && window.turnstile && this.config.key) {
+          const token = await getTurnstileToken(this.config.key);
+          if (token) payload.cf = token;
+        }
+      } catch (_e) {}
+      if (this.ws) this.ws.send(JSON.stringify(payload));
+      this.draft = '';
+      this.$nextTick(() => { this.$refs.messages.scrollTop = this.$refs.messages.scrollHeight; });
+    },
+    formatTime(ts) {
+      try { return new Date(ts).toLocaleTimeString(); } catch (_e) { return ''; }
+    }
+  }
+}
+const TURNSTILE_SITE_KEY = (() => {
+  try {
+    const el = document.getElementById('chat-config');
+    if (!el) return null;
+    const cfg = JSON.parse(el.textContent || '{}');
+    return cfg.turnstile_site_key || null;
+  } catch (_) { return null; }
+})();
+async function getTurnstileToken(KEY) {
+  return new Promise((resolve) => {
+    try {
+      const k = KEY || TURNSTILE_SITE_KEY;
+      if (!k) return resolve(null);
+      // Use invisible execution
+      window.turnstile.execute(k, {action: 'chat_send'}).then(resolve).catch(() => resolve(null));
+    } catch (_e) {
+      resolve(null);
+    }
+  });
+}
+</script>
+{% if turnstile_site_key %}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+{% endif %}
+{% endblock %}
