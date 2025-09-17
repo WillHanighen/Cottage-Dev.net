@@ -20,7 +20,7 @@ A modern, lightweight FastAPI web app with server-rendered Jinja2 templates, HTM
 ### 1. Clone and enter the project directory:
 
 ```bash
-git clone <repository-url>
+git clone [https://github.com/WillHanighen/Cottage-Dev.net](https://github.com/WillHanighen/Cottage-Dev.net)
 cd cottage-site
 ```
 
