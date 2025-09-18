@@ -15,12 +15,13 @@ from app.web.routers.chat import router as chat_router
 from app.web.routers.ws import router as ws_router
 from app.web.routers.forum import router as forum_router
 from app.web.routers.about import router as about_router
+from app.web.routers.resume import router as resume_router
 from app.web.routers.auth import router as auth_router
 from app.middleware.auth import AuthMiddleware
 from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.db import Base, AsyncSessionLocal
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -29,7 +30,7 @@ app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
 # Auth middleware
 app.add_middleware(AuthMiddleware)
 # Session middleware (required for OAuth state)
-app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY, same_site="lax", https_only=settings.JWT_COOKIE_SECURE)
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY, same_site="lax", https_only=not settings.DEBUG)
 
 # Static files
 static_dir = BASE_DIR / "web" / "static"
@@ -49,12 +50,20 @@ async def on_startup():
   import app.core.models.thread  # noqa: F401
   import app.core.models.category  # noqa: F401
   import app.core.models.interaction  # noqa: F401
+  import app.core.models.resume  # noqa: F401
   engine: AsyncEngine = create_async_engine(settings.DATABASE_URL, echo=settings.DEBUG, future=True)
   async with engine.begin() as conn:
       await conn.run_sync(Base.metadata.create_all)
+      # Ensure 'role' column exists on users (best-effort, Postgres-specific)
+      try:
+          await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user'"))
+      except Exception:
+          pass
   # Seed default categories if none exist
   try:
       from app.core.models.category import Category
+      from app.core.models.resume import Resume
+      from app.core.models.user import User
       async with AsyncSessionLocal() as session:
           result = await session.execute(select(Category).limit(1))
           exists = result.scalar_one_or_none()
@@ -65,6 +74,18 @@ async def on_startup():
                   Category(name="Show & Tell", slug="show-and-tell"),
               ])
               await session.commit()
+          # Seed default resume if not present
+          r = (await session.execute(select(Resume).limit(1))).scalar_one_or_none()
+          if not r:
+              session.add(Resume(content="# Your Name\n\nAdd your resume content here (Markdown supported)."))
+              await session.commit()
+          # Assign owner role based on OWNER_EMAIL env, if set
+          if settings.OWNER_EMAIL:
+              owner_email = settings.OWNER_EMAIL.strip().lower()
+              u = (await session.execute(select(User).where(User.email == owner_email))).scalar_one_or_none()
+              if u and getattr(u, "role", "user") != "owner":
+                  u.role = "owner"
+                  await session.commit()
   except Exception:
       # Swallow seeding errors in startup path to avoid blocking app
       pass
@@ -81,6 +102,7 @@ app.include_router(chat_router)
 app.include_router(ws_router)
 app.include_router(forum_router)
 app.include_router(about_router)
+app.include_router(resume_router)
 app.include_router(auth_router)
 
 

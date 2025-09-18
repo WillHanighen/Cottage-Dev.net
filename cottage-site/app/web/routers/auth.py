@@ -101,6 +101,13 @@ async def login_submit(
             {"request": request, "title": "Login", "error": "Invalid email or password.", "turnstile_site_key": settings.TURNSTILE_SITE_KEY},
             status_code=400,
         )
+    # Promote to owner if matches OWNER_EMAIL
+    try:
+        if settings.OWNER_EMAIL and (user.email or "").lower() == settings.OWNER_EMAIL.strip().lower() and getattr(user, "role", "user") != "owner":
+            user.role = "owner"
+            await session.commit()
+    except Exception:
+        pass
     token = create_access_token(str(user.id))
     resp = RedirectResponse(url=next or "/", status_code=302)
     resp.set_cookie(
@@ -156,7 +163,13 @@ async def register_submit(
     session.add(user)
     await session.commit()
     await session.refresh(user)
-
+    # Promote to owner if matches OWNER_EMAIL
+    try:
+        if settings.OWNER_EMAIL and (user.email or "").lower() == settings.OWNER_EMAIL.strip().lower() and getattr(user, "role", "user") != "owner":
+            user.role = "owner"
+            await session.commit()
+    except Exception:
+        pass
     token = create_access_token(str(user.id))
     resp = RedirectResponse(url=next or "/", status_code=302)
     resp.set_cookie(
@@ -182,7 +195,9 @@ async def logout():
 async def google_login(request: Request):
     if not getattr(oauth, "google", None):
         return RedirectResponse(url="/login")
-    redirect_uri = settings.GOOGLE_REDIRECT_URL or str(request.url_for("google_callback"))
+    redirect_uri = str(request.url_for("google_callback"))
+    if settings.GOOGLE_REDIRECT_URL and not settings.DEBUG:
+        redirect_uri = settings.GOOGLE_REDIRECT_URL
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
@@ -217,7 +232,13 @@ async def google_callback(request: Request, session: AsyncSession = Depends(get_
             user.provider = "google"
             user.provider_sub = sub
             await session.commit()
-
+    # Promote to owner if matches OWNER_EMAIL
+    try:
+        if settings.OWNER_EMAIL and (user.email or "").lower() == settings.OWNER_EMAIL.strip().lower() and getattr(user, "role", "user") != "owner":
+            user.role = "owner"
+            await session.commit()
+    except Exception:
+        pass
     jwt_token = create_access_token(str(user.id))
     resp = RedirectResponse(url="/", status_code=302)
     resp.set_cookie(settings.JWT_COOKIE_NAME, jwt_token, httponly=True, secure=settings.JWT_COOKIE_SECURE, samesite="lax", max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60, path="/")
@@ -228,7 +249,9 @@ async def google_callback(request: Request, session: AsyncSession = Depends(get_
 async def github_login(request: Request):
     if not getattr(oauth, "github", None):
         return RedirectResponse(url="/login")
-    redirect_uri = settings.GITHUB_REDIRECT_URL or str(request.url_for("github_callback"))
+    redirect_uri = str(request.url_for("github_callback"))
+    if settings.GITHUB_REDIRECT_URL and not settings.DEBUG:
+        redirect_uri = settings.GITHUB_REDIRECT_URL
     return await oauth.github.authorize_redirect(request, redirect_uri)
 
 
@@ -265,7 +288,13 @@ async def github_callback(request: Request, session: AsyncSession = Depends(get_
             user.provider = "github"
             user.provider_sub = gid
             await session.commit()
-
+    # Promote to owner if matches OWNER_EMAIL
+    try:
+        if settings.OWNER_EMAIL and (user.email or "").lower() == settings.OWNER_EMAIL.strip().lower() and getattr(user, "role", "user") != "owner":
+            user.role = "owner"
+            await session.commit()
+    except Exception:
+        pass
     jwt_token = create_access_token(str(user.id))
     resp = RedirectResponse(url="/", status_code=302)
     resp.set_cookie(settings.JWT_COOKIE_NAME, jwt_token, httponly=True, secure=settings.JWT_COOKIE_SECURE, samesite="lax", max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60, path="/")

@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     TURNSTILE_SITE_KEY: Optional[str] = None
     TURNSTILE_SECRET_KEY: Optional[str] = None
 
+    # Site owner (email). If set, that user will be granted the 'owner' role on startup
+    OWNER_EMAIL: Optional[str] = None
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
 

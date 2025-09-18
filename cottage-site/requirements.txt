@@ -38,3 +38,5 @@ meilisearch==0.30.0
 
 # Images (avatars)
 Pillow==10.3.0
+
+beautifulsoup4==4.12.3

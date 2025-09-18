@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="container mx-auto px-4 py-12 max-w-3xl">
+  <div class="flex items-center justify-between">
+    <h1 class="text-3xl font-bold">Resume</h1>
+    {% if request.state.user and (request.state.user.role or 'user') == 'owner' %}
+    <a href="/resume/edit" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+      Edit
+    </a>
+    {% endif %}
+  </div>
+
+  <div class="prose prose-invert mt-6">
+    {% if resume_html %}
+      {{ resume_html | safe }}
+    {% else %}
+      <p class="text-slate-300">No resume content yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -18,4 +18,5 @@ class User(Base):
     password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     provider: Mapped[str] = mapped_column(String(50), default="local")  # local, google, github
     provider_sub: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default="user", server_default="user", index=True)  # user, owner
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
