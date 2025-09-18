@@ -17,14 +17,14 @@ A modern, lightweight FastAPI web app with server-rendered Jinja2 templates, HTM
 
 ## Quickstart
 
-### 1. Clone and enter the project directory:
+### 1. Clone and enter the project directory
 
 ```bash
 git clone https://github.com/WillHanighen/Cottage-Dev.net
 cd cottage-site
 ```
 
-### 2. Copy environment file and edit values as needed:
+### 2. Copy environment file and edit values as needed
 
 ```bash
 cp .env.example .env
@@ -32,13 +32,13 @@ cp .env.example .env
 
 Edit the `.env` file with your database credentials, Redis connection, and other configuration values.
 
-### 3. Start infrastructure (PostgreSQL, Redis, optional Elasticsearch):
+### 3. Start infrastructure (PostgreSQL, Redis, optional Elasticsearch
 
 ```bash
 docker-compose up -d
 ```
 
-### 4. Install Python dependencies:
+### 4. Install Python dependencies
 
 ```bash
 python3.12 -m venv venv
@@ -46,13 +46,13 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 5. Run database migrations:
+### 5. Run database migrations
 
 ```bash
 alembic upgrade head
 ```
 
-### 6. Start the development server:
+### 6. Start the development server
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

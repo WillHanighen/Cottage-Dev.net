@@ -121,7 +121,8 @@ print("hello")
       const render = () => {
         const raw = textarea.value || '';
         let html = md.render(raw);
-        html = DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR, ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\\/)/i });
+        const allowedUri = /^(?:(?:https?|mailto):|\/)/i;
+        html = DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR, ALLOWED_URI_REGEXP: allowedUri });
         preview.innerHTML = html;
         // After injection, wrap images with anchors to open in new tab (avoid double-wrapping)
         preview.querySelectorAll('img').forEach(img => {
